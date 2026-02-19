@@ -1,6 +1,6 @@
 # Sagiton
 
-Backend structure for a Discord-like application built with Rust, due to the Turkish DNS block. 
+Discord like application built with Rust, due to the Turkish DNS block. 
 
 ## Purpose
 
