@@ -3,10 +3,11 @@ use crate::application::use_cases::auth::{
 };
 use crate::bootstrap::app_state::AppState;
 use crate::domain::auth::SessionContext;
+use crate::interfaces::http::authentication::authenticated_user_id;
 use crate::interfaces::http::dto::auth::{
     LoginRequest, LogoutRequest, MessageResponse, RefreshRequest, RegisterRequest,
 };
-use crate::shared::error::{AppError, AppResult};
+use crate::shared::error::AppResult;
 use axum::{
     Json,
     extract::State,
@@ -98,8 +99,7 @@ pub async fn me(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> AppResult<Json<serde_json::Value>> {
-    let token = extract_bearer_token(&headers)?;
-    let user_id = state.auth_use_case().verify_access_token(token)?;
+    let user_id = authenticated_user_id(&state, &headers)?;
     let user = state.auth_use_case().me(user_id).await?;
 
     Ok(Json(serde_json::json!({ "user": user })))
@@ -110,24 +110,6 @@ fn build_session_context(headers: &HeaderMap) -> SessionContext {
         user_agent: read_header(headers, header::USER_AGENT),
         ip: read_header(headers, "x-forwarded-for"),
     }
-}
-
-fn extract_bearer_token(headers: &HeaderMap) -> AppResult<&str> {
-    let header_value = headers
-        .get(header::AUTHORIZATION)
-        .ok_or_else(|| AppError::unauthorized("authorization header is required"))?
-        .to_str()
-        .map_err(|_| AppError::unauthorized("authorization header is invalid"))?;
-
-    let token = header_value
-        .strip_prefix("Bearer ")
-        .ok_or_else(|| AppError::unauthorized("bearer token is required"))?;
-
-    if token.trim().is_empty() {
-        return Err(AppError::unauthorized("bearer token is required"));
-    }
-
-    Ok(token)
 }
 
 fn read_header(headers: &HeaderMap, key: impl axum::http::header::AsHeaderName) -> Option<String> {

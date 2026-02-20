@@ -18,8 +18,11 @@ use tower::ServiceExt;
 async fn build_test_app(database_url: String) -> (Router, PgPool) {
     let config = AppConfig {
         port: 18080,
+        app_env: "test".to_string(),
         log_level: "info".to_string(),
         db_max_connections: 5,
+        http_body_limit_bytes: 1024 * 1024,
+        ws_max_message_bytes: 16_384,
         database_url,
         redis_url: "redis://localhost:6379".to_string(),
         jwt_secret: "test_secret_for_integration_tests_only".to_string(),
@@ -94,6 +97,8 @@ async fn drop_schema(database_url: &str, schema: &str) {
 }
 
 fn test_database_url() -> String {
+    dotenvy::dotenv().ok();
+
     std::env::var("TEST_DATABASE_URL")
         .or_else(|_| std::env::var("DATABASE_URL"))
         .expect("set TEST_DATABASE_URL or DATABASE_URL before running tests")
@@ -163,6 +168,7 @@ async fn register_user(app: &Router, username: &str, password: &str) {
 }
 
 #[tokio::test]
+#[serial_test::serial]
 async fn health_endpoint_returns_ok() {
     run_isolated_test(|app| async move {
         let req = Request::builder()
@@ -184,6 +190,7 @@ async fn health_endpoint_returns_ok() {
 }
 
 #[tokio::test]
+#[serial_test::serial]
 async fn register_endpoint_creates_user() {
     run_isolated_test(|app| async move {
         let username = unique_username("register_case_user");
@@ -206,6 +213,7 @@ async fn register_endpoint_creates_user() {
 }
 
 #[tokio::test]
+#[serial_test::serial]
 async fn login_endpoint_returns_tokens() {
     run_isolated_test(|app| async move {
         let username = unique_username("login_case_user");
@@ -230,6 +238,7 @@ async fn login_endpoint_returns_tokens() {
 }
 
 #[tokio::test]
+#[serial_test::serial]
 async fn refresh_endpoint_rotates_tokens() {
     run_isolated_test(|app| async move {
         let username = unique_username("refresh_case_user");
@@ -271,6 +280,7 @@ async fn refresh_endpoint_rotates_tokens() {
 }
 
 #[tokio::test]
+#[serial_test::serial]
 async fn logout_endpoint_revokes_refresh_token() {
     run_isolated_test(|app| async move {
         let username = unique_username("logout_case_user");
@@ -321,6 +331,7 @@ async fn logout_endpoint_revokes_refresh_token() {
 }
 
 #[tokio::test]
+#[serial_test::serial]
 async fn me_endpoint_returns_current_user() {
     run_isolated_test(|app| async move {
         let username = unique_username("me_case_user");

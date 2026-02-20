@@ -1,8 +1,10 @@
 use crate::application::ports::auth::RefreshTokenPort;
+use anyhow::{Result, bail};
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
 type HmacSha256 = Hmac<Sha256>;
+const MIN_PEPPER_LENGTH: usize = 16;
 
 pub struct RefreshTokenAdapter {
     pepper: String,
@@ -13,10 +15,14 @@ impl RefreshTokenAdapter {
     ///
     /// # Parameters
     /// - `pepper`: Server-side secret used in refresh token hash derivation.
-    pub fn new(pepper: &str) -> Self {
-        Self {
-            pepper: pepper.to_string(),
+    pub fn new(pepper: &str) -> Result<Self> {
+        if pepper.trim().len() < MIN_PEPPER_LENGTH {
+            bail!("REFRESH_TOKEN_PEPPER must be at least {MIN_PEPPER_LENGTH} characters long");
         }
+
+        Ok(Self {
+            pepper: pepper.to_string(),
+        })
     }
 }
 
@@ -27,8 +33,9 @@ impl RefreshTokenPort for RefreshTokenAdapter {
     }
 
     fn hash_refresh_token(&self, token: &str) -> String {
-        let mut mac = HmacSha256::new_from_slice(self.pepper.as_bytes())
-            .expect("pepper key must be a valid HMAC key");
+        let Ok(mut mac) = HmacSha256::new_from_slice(self.pepper.as_bytes()) else {
+            return String::new();
+        };
         mac.update(token.as_bytes());
         let digest = mac.finalize().into_bytes();
         to_hex(&digest)
