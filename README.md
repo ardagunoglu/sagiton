@@ -17,42 +17,32 @@ The project follows:
 
 ## Current Status
 
-### Milestone 0 – Project Foundation (Completed)
+Implemented milestones:
+- Milestone 0: Project foundation, clean architecture skeleton, Docker setup, health checks
+- Milestone 1: Authentication and session lifecycle (register/login/refresh/logout/me)
+- Milestone 2: Guild and channel core (membership, channel management, permissions groundwork)
+- Milestone 3: Realtime messaging platform
 
-- Rust workspace and backend skeleton created
-- Clean Architecture folder structure established
-- Docker Compose configuration (PostgreSQL + Redis)
-- Environment configuration via `.env`
-- Health endpoint implemented
-- Integration test infrastructure set up
+Milestone 3 highlights:
+- Channel messaging and thread messaging (DM/group/guild channels)
+- WebSocket gateway with JWT auth, heartbeat, subscribe model, and deterministic subscribe ack flow
+- Redis pub/sub fanout with reconnect strategy and echo suppression for multi instance consistency
+- Presence lifecycle with multi device refcount and TTL refresh
+- Guild invite tokens and group invite tokens
+- Unread/last_read baseline (`channel_reads`, `thread_reads`) with `has_unread` in list responses
+- Friendship baseline (`friend_requests`, `friends`) with request/accept/reject/list flows
+- Direct thread behavior: accepted friendship creates ACTIVE DM flow
 
-### Milestone 1 – Authentication & Sessions (Completed)
+Testing status:
+- Integration tests are in place for auth, guild/channel, conversation, friendship, message, and ws realtime suites
+- Endpoint level coverage is enforced for newly added APIs
 
-Implemented and fully integration-tested:
+## Planned Next
 
-- User registration
-- Login
-- Access JWT issuance
-- Refresh token rotation
-- Logout (session revocation)
-- Current user endpoint (`/me`)
-- Secure password hashing using Argon2id + salt + pepper
-- Refresh token hashing with database persistence
-
-All auth endpoints and health checks are covered by integration tests.
-
-## Next Milestone
-### Milestone 2 – Guild & Channel Core
-
-Planned work:
-- Guild (server) model
-- Channel model
-- Membership system
-- Role based authorization groundwork
-- Guild/channel CRUD endpoints
-- Integration tests for all new endpoints
-- Permission checks integrated into service layer
-- This milestone establishes the structural foundation for real time messaging and presence features.
+- OpenAPI/spec generation and API contract standardization
+- Standardized error response model (problem style structure)
+- Pagination contract hardening and cursor documentation
+- Continued operational hardening for production rollout
 
 ## License
 

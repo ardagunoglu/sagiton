@@ -17,6 +17,12 @@ impl Argon2PasswordAdapter {
     }
 }
 
+impl Default for Argon2PasswordAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PasswordPort for Argon2PasswordAdapter {
     fn hash_password(&self, password: &str) -> AppResult<String> {
         let salt = SaltString::generate(&mut OsRng);

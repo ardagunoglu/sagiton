@@ -5,8 +5,11 @@ use std::env;
 #[allow(dead_code)]
 pub struct AppConfig {
     pub port: u16,
+    pub app_env: String,
     pub log_level: String,
     pub db_max_connections: u32,
+    pub http_body_limit_bytes: usize,
+    pub ws_max_message_bytes: usize,
     pub database_url: String,
     pub redis_url: String,
     pub jwt_secret: String,
@@ -24,11 +27,20 @@ impl AppConfig {
 
         Ok(Self {
             port,
+            app_env: env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()),
             log_level: env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string()),
             db_max_connections: env::var("APP_DB_MAX_CONNECTIONS")
                 .unwrap_or_else(|_| "20".to_string())
                 .parse::<u32>()
                 .context("APP_DB_MAX_CONNECTIONS must be a valid u32")?,
+            http_body_limit_bytes: env::var("APP_HTTP_BODY_LIMIT_BYTES")
+                .unwrap_or_else(|_| "1048576".to_string())
+                .parse::<usize>()
+                .context("APP_HTTP_BODY_LIMIT_BYTES must be a valid usize")?,
+            ws_max_message_bytes: env::var("APP_WS_MAX_MESSAGE_BYTES")
+                .unwrap_or_else(|_| "16384".to_string())
+                .parse::<usize>()
+                .context("APP_WS_MAX_MESSAGE_BYTES must be a valid usize")?,
             database_url: env::var("DATABASE_URL")
                 .context("DATABASE_URL is required in environment")?,
             redis_url: env::var("REDIS_URL").context("REDIS_URL is required in environment")?,

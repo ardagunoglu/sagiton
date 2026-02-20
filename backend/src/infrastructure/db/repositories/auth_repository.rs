@@ -189,10 +189,10 @@ async fn insert_rotated_session(
 }
 
 fn map_create_user_error(err: sqlx::Error) -> AppError {
-    if let sqlx::Error::Database(db_err) = &err {
-        if db_err.code().as_deref() == Some("23505") {
-            return AppError::conflict("username or email already exists");
-        }
+    if let sqlx::Error::Database(db_err) = &err
+        && db_err.code().as_deref() == Some("23505")
+    {
+        return AppError::conflict("username or email already exists");
     }
 
     AppError::from(err)
