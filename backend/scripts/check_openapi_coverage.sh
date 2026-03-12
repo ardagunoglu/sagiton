@@ -17,21 +17,39 @@ if [[ ! -f "$ROUTER_FILE" || ! -f "$OPENAPI_FILE" ]]; then
   exit 1
 fi
 
-router_paths="$(
-  rg -o '"/[^"]+"' "$ROUTER_FILE" \
-    | tr -d '"' \
-    | grep -vE '^/openapi\.json$' \
-    | grep -vE '^/docs(/.*)?$' \
-    | sort -u
-)"
+if command -v rg >/dev/null 2>&1; then
+  router_paths="$(
+    rg -o '"/[^"]+"' "$ROUTER_FILE" \
+      | tr -d '"' \
+      | grep -vE '^/openapi\.json$' \
+      | grep -vE '^/docs(/.*)?$' \
+      | sort -u
+  )"
 
-spec_paths="$(
-  rg -o 'path = "/[^"]+"' "$OPENAPI_FILE" \
-    | sed -E 's/path = "([^"]+)"/\1/' \
-    | grep -vE '^/openapi\.json$' \
-    | grep -vE '^/docs(/.*)?$' \
-    | sort -u
-)"
+  spec_paths="$(
+    rg -o 'path = "/[^"]+"' "$OPENAPI_FILE" \
+      | sed -E 's/path = "([^"]+)"/\1/' \
+      | grep -vE '^/openapi\.json$' \
+      | grep -vE '^/docs(/.*)?$' \
+      | sort -u
+  )"
+else
+  router_paths="$(
+    grep -oE '"/[^"]+"' "$ROUTER_FILE" \
+      | tr -d '"' \
+      | grep -vE '^/openapi\.json$' \
+      | grep -vE '^/docs(/.*)?$' \
+      | sort -u
+  )"
+
+  spec_paths="$(
+    grep -oE 'path = "/[^"]+"' "$OPENAPI_FILE" \
+      | sed -E 's/path = "([^"]+)"/\1/' \
+      | grep -vE '^/openapi\.json$' \
+      | grep -vE '^/docs(/.*)?$' \
+      | sort -u
+  )"
+fi
 
 router_only="$(comm -23 <(echo "$router_paths") <(echo "$spec_paths"))"
 spec_only="$(comm -13 <(echo "$router_paths") <(echo "$spec_paths"))"
