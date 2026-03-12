@@ -82,6 +82,11 @@ pub struct ListThreadMessagesQuery {
     pub limit: Option<i64>,
 }
 
+pub struct ThreadMessagePage {
+    pub messages: Vec<ThreadMessageRecord>,
+    pub next_cursor: Option<Uuid>,
+}
+
 pub struct EditThreadMessageCommand {
     pub user_id: Uuid,
     pub message_id: Uuid,
@@ -367,14 +372,32 @@ impl ConversationUseCase {
     pub async fn list_thread_messages(
         &self,
         query: ListThreadMessagesQuery,
-    ) -> AppResult<Vec<ThreadMessageRecord>> {
+    ) -> AppResult<ThreadMessagePage> {
         self.require_thread_member(query.thread_id, query.user_id)
             .await?;
 
         let limit = normalize_limit(query.limit)?;
-        self.repo
-            .list_thread_messages(query.thread_id, query.before, limit)
-            .await
+        let fetch_limit = limit + 1;
+        let mut messages = self
+            .repo
+            .list_thread_messages(query.thread_id, query.before, fetch_limit)
+            .await?;
+
+        let has_more = messages.len() as i64 > limit;
+        if has_more {
+            messages.truncate(limit as usize);
+        }
+
+        let next_cursor = if has_more {
+            messages.last().map(|message| message.id)
+        } else {
+            None
+        };
+
+        Ok(ThreadMessagePage {
+            messages,
+            next_cursor,
+        })
     }
 
     /// Edits author-owned thread message.

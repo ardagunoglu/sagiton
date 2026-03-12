@@ -24,6 +24,7 @@ async fn build_test_app(database_url: String) -> Router {
         redis_url: "redis://localhost:6379".to_string(),
         jwt_secret: "test_secret_for_integration_tests_only".to_string(),
         refresh_token_pepper: "test_refresh_token_pepper".to_string(),
+        docs_enabled: false,
     };
 
     let state = AppState::new(config)
@@ -453,6 +454,57 @@ async fn friends_create_direct_thread_as_active() {
         .await;
         assert_eq!(message_status, StatusCode::OK);
         assert_eq!(message_body["message"]["content"], "friend flow works");
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn list_thread_messages_returns_next_cursor() {
+    run_isolated_test(|app, isolated_db_url| async move {
+        let (owner_token, owner_id) = register_and_login(&app, "thread_page_owner").await;
+        let (_peer_token, peer_id) = register_and_login(&app, "thread_page_peer").await;
+        insert_friendship(&isolated_db_url, owner_id, peer_id).await;
+
+        let (thread_id, status, _) = create_direct_thread_http(&app, &owner_token, peer_id).await;
+        assert_eq!(status, "ACTIVE");
+
+        let _ = send_authorized_json(
+            &app,
+            "POST",
+            &format!("/api/threads/{thread_id}/messages"),
+            &owner_token,
+            json!({ "content": "first" }),
+        )
+        .await;
+
+        let _ = send_authorized_json(
+            &app,
+            "POST",
+            &format!("/api/threads/{thread_id}/messages"),
+            &owner_token,
+            json!({ "content": "second" }),
+        )
+        .await;
+
+        let (list_status, list_body) = send_authorized_get(
+            &app,
+            &format!("/api/threads/{thread_id}/messages?limit=1"),
+            &owner_token,
+        )
+        .await;
+        assert_eq!(list_status, StatusCode::OK);
+        assert_eq!(
+            list_body["messages"]
+                .as_array()
+                .expect("messages should be array")
+                .len(),
+            1
+        );
+        assert!(
+            list_body["next_cursor"].as_str().is_some(),
+            "next_cursor should exist when another page is available"
+        );
     })
     .await;
 }

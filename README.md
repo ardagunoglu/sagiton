@@ -36,6 +36,13 @@ Milestone 3 highlights:
 Testing status:
 - Integration tests are in place for auth, guild/channel, conversation, friendship, message, and ws realtime suites
 - Endpoint level coverage is enforced for newly added APIs
+- CI quality gates run `cargo fmt --check`, `cargo clippy --all-targets -D warnings`, `cargo test`, and OpenAPI route coverage check
+
+Quality commands (backend):
+- `cargo fmt --check`
+- `cargo clippy --all-targets -- -D warnings`
+- `cargo test`
+- `./scripts/check_openapi_coverage.sh`
 
 ## Planned Next
 

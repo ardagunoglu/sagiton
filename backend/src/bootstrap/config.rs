@@ -14,6 +14,7 @@ pub struct AppConfig {
     pub redis_url: String,
     pub jwt_secret: String,
     pub refresh_token_pepper: String,
+    pub docs_enabled: bool,
 }
 
 impl AppConfig {
@@ -26,8 +27,8 @@ impl AppConfig {
             .context("APP_PORT must be a valid u16")?;
 
         Ok(Self {
-            port,
             app_env: env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()),
+            port,
             log_level: env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string()),
             db_max_connections: env::var("APP_DB_MAX_CONNECTIONS")
                 .unwrap_or_else(|_| "20".to_string())
@@ -47,6 +48,14 @@ impl AppConfig {
             jwt_secret: env::var("JWT_SECRET").context("JWT_SECRET is required in environment")?,
             refresh_token_pepper: env::var("REFRESH_TOKEN_PEPPER")
                 .unwrap_or_else(|_| env::var("JWT_SECRET").unwrap_or_default()),
+            docs_enabled: env::var("APP_DOCS_ENABLED")
+                .map(|raw| {
+                    matches!(
+                        raw.trim().to_ascii_lowercase().as_str(),
+                        "1" | "true" | "yes"
+                    )
+                })
+                .unwrap_or(false),
         })
     }
 }

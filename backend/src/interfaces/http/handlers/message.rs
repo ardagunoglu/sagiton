@@ -73,7 +73,7 @@ pub async fn list_messages(
 ) -> AppResult<Json<serde_json::Value>> {
     let user_id = authenticated_user_id(&state, &headers)?;
 
-    let messages = state
+    let page = state
         .message_use_case()
         .list_messages(UseCaseListQuery {
             user_id,
@@ -83,7 +83,10 @@ pub async fn list_messages(
         })
         .await?;
 
-    Ok(Json(serde_json::json!({ "messages": messages })))
+    Ok(Json(serde_json::json!({
+        "messages": page.messages,
+        "next_cursor": page.next_cursor
+    })))
 }
 
 /// Edits message content and publishes MESSAGE_UPDATE event.

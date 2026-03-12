@@ -24,6 +24,7 @@ async fn build_test_app(database_url: String) -> Router {
         redis_url: "redis://localhost:6379".to_string(),
         jwt_secret: "test_secret_for_integration_tests_only".to_string(),
         refresh_token_pepper: "test_refresh_token_pepper".to_string(),
+        docs_enabled: false,
     };
 
     let state = AppState::new(config)
@@ -332,6 +333,14 @@ async fn create_and_list_messages_flow() {
                 .len(),
             1
         );
+        assert!(
+            list_body.get("next_cursor").is_some(),
+            "list response must include next_cursor field"
+        );
+        assert!(
+            list_body["next_cursor"].is_null(),
+            "single item page should not expose a next cursor"
+        );
     })
     .await;
 }
@@ -459,6 +468,14 @@ async fn list_messages_supports_before_cursor() {
                 .expect("messages should be array")
                 .len(),
             0
+        );
+        assert!(
+            page.get("next_cursor").is_some(),
+            "list response must include next_cursor field"
+        );
+        assert!(
+            page["next_cursor"].is_null(),
+            "empty page should not expose a next cursor"
         );
     })
     .await;

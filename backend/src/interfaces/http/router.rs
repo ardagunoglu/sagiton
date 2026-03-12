@@ -21,6 +21,7 @@ use crate::interfaces::http::handlers::message::{
 };
 use crate::interfaces::http::handlers::metrics::metrics;
 use crate::interfaces::http::middleware::metrics::track_metrics;
+use crate::interfaces::http::openapi::ApiDoc;
 use crate::interfaces::ws::gateway::ws_handler;
 use axum::{
     Router,
@@ -31,9 +32,14 @@ use axum::{
 };
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::TraceLayer;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 pub fn build_router(state: AppState) -> Router {
-    Router::new()
+    let docs_enabled =
+        state.config().app_env.eq_ignore_ascii_case("development") && state.config().docs_enabled;
+
+    let mut router = Router::new()
         .route("/health", get(health_check))
         .route("/metrics", get(metrics))
         .route("/ws", get(ws_handler))
@@ -135,5 +141,11 @@ pub fn build_router(state: AppState) -> Router {
         .layer(PropagateRequestIdLayer::x_request_id())
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(DefaultBodyLimit::max(state.config().http_body_limit_bytes))
-        .with_state(state)
+        .with_state(state.clone());
+
+    if docs_enabled {
+        router = router.merge(SwaggerUi::new("/docs").url("/openapi.json", ApiDoc::openapi()));
+    }
+
+    router
 }

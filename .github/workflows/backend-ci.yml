@@ -1,0 +1,74 @@
+name: backend-ci
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: sagiton
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/sagiton
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/sagiton
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci_jwt_secret_change_me
+      REFRESH_TOKEN_PEPPER: ci_refresh_pepper_change_me
+      APP_ENV: test
+      APP_DOCS_ENABLED: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+
+      - name: Wait for services
+        shell: bash
+        run: |
+          set -euo pipefail
+          for port in 5432 6379; do
+            for i in {1..60}; do
+              if (echo > /dev/tcp/127.0.0.1/${port}) >/dev/null 2>&1; then
+                break
+              fi
+              sleep 1
+              if [[ "$i" -eq 60 ]]; then
+                echo "service on port ${port} did not become ready" >&2
+                exit 1
+              fi
+            done
+          done
+
+      - name: OpenAPI coverage
+        run: ./scripts/check_openapi_coverage.sh
+
+      - name: Format check
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test

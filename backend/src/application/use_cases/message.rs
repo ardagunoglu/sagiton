@@ -27,6 +27,11 @@ pub struct ListMessagesQuery {
     pub limit: Option<i64>,
 }
 
+pub struct MessagePage {
+    pub messages: Vec<MessageRecord>,
+    pub next_cursor: Option<Uuid>,
+}
+
 pub struct EditMessageCommand {
     pub user_id: Uuid,
     pub message_id: Uuid,
@@ -83,7 +88,7 @@ impl MessageUseCase {
     ///
     /// # Parameters
     /// - `query`: Query containing actor, channel and pagination cursor.
-    pub async fn list_messages(&self, query: ListMessagesQuery) -> AppResult<Vec<MessageRecord>> {
+    pub async fn list_messages(&self, query: ListMessagesQuery) -> AppResult<MessagePage> {
         let permissions = self
             .require_channel_permissions(query.user_id, query.channel_id)
             .await?;
@@ -93,9 +98,27 @@ impl MessageUseCase {
         }
 
         let limit = normalize_limit(query.limit)?;
-        self.message_repo
-            .list_messages(query.channel_id, query.before, limit)
-            .await
+        let fetch_limit = limit + 1;
+        let mut messages = self
+            .message_repo
+            .list_messages(query.channel_id, query.before, fetch_limit)
+            .await?;
+
+        let has_more = messages.len() as i64 > limit;
+        if has_more {
+            messages.truncate(limit as usize);
+        }
+
+        let next_cursor = if has_more {
+            messages.last().map(|message| message.id)
+        } else {
+            None
+        };
+
+        Ok(MessagePage {
+            messages,
+            next_cursor,
+        })
     }
 
     /// Edits author-owned message and marks edit timestamp.
